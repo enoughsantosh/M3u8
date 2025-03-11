@@ -29,6 +29,11 @@
             return uri.startsWith("http") ? uri : baseUrl + uri;
         }
 
+        function getQueryParam(name) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(name);
+        }
+
         async function fetchAndParseM3U8() {
             const url = document.getElementById('m3u8Url').value;
             const baseUrl = getBaseUrl(url);
@@ -51,7 +56,6 @@
                 parser.push(content);
                 parser.end();
 
-                // Construct JSON output
                 let parsedData = {
                     success: true,
                     parsedData: {
@@ -64,7 +68,6 @@
                     }
                 };
 
-                // Parse Video Playlists
                 if (parser.manifest.playlists) {
                     parsedData.parsedData.playlists = parser.manifest.playlists.map(variant => ({
                         attributes: variant.attributes,
@@ -73,7 +76,6 @@
                     }));
                 }
 
-                // Display JSON output
                 jsonOutput.textContent = JSON.stringify(parsedData, null, 4);
                 console.log(parsedData);
 
@@ -82,6 +84,14 @@
                 console.error("Error:", error);
             }
         }
+
+        window.onload = function () {
+            const queryValue = getQueryParam('q');
+            if (queryValue) {
+                document.getElementById('m3u8Url').value = decodeURIComponent(queryValue);
+                fetchAndParseM3U8();
+            }
+        };
     </script>
 </body>
 </html>
