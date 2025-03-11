@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>M3U8 Master Playlist JSON Parser</title>
+    <title>M3U8 JSON Parser</title>
     <script src="https://cdn.jsdelivr.net/npm/m3u8-parser@4.6.0/dist/m3u8-parser.min.js"></script>
 </head>
 <body>
-    <h2>M3U8 Master Playlist JSON Parser</h2>
+    <h2>M3U8 JSON Parser</h2>
     <input type="text" id="m3u8Url" placeholder="Enter M3U8 URL">
     <button onclick="fetchAndParseM3U8()">Fetch & Parse</button>
     <h3>Parsed JSON Output:</h3>
@@ -48,7 +48,7 @@
         }
 
         async function fetchAndParseM3U8() {
-            const url = document.getElementById('m3u8Url').value;
+            const url = getQueryParam('q') || document.getElementById('m3u8Url').value;
             const baseUrl = getBaseUrl(url);
             const jsonOutput = document.getElementById('jsonOutput');
             jsonOutput.textContent = '';
@@ -101,20 +101,30 @@
                 // Fix Media Group URIs
                 parsedData.parsedData.mediaGroups = fixMediaGroupUris(parser.manifest.mediaGroups, baseUrl);
 
-                // Display JSON output
-                jsonOutput.textContent = JSON.stringify(parsedData, null, 4);
-                console.log(parsedData);
+                // Convert JSON to a string
+                const jsonString = JSON.stringify(parsedData, null, 4);
+
+                // Check if the request is from a script (like `curl`)
+                if (window.navigator.userAgent.includes("curl") || getQueryParam("download") === "1") {
+                    const blob = new Blob([jsonString], { type: "application/json" });
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = "parsed_m3u8.json";
+                    a.click();
+                } else {
+                    jsonOutput.textContent = jsonString;
+                    console.log(parsedData);
+                }
 
             } catch (error) {
-                jsonOutput.textContent = JSON.stringify({ success: false, error: error.message }, null, 4);
+                const errorJson = JSON.stringify({ success: false, error: error.message }, null, 4);
+                jsonOutput.textContent = errorJson;
                 console.error("Error:", error);
             }
         }
 
         window.onload = function () {
-            const queryValue = getQueryParam('q');
-            if (queryValue) {
-                document.getElementById('m3u8Url').value = decodeURIComponent(queryValue);
+            if (getQueryParam('q')) {
                 fetchAndParseM3U8();
             }
         };
