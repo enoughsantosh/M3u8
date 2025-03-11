@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M3U8 Master Playlist JSON Parser</title>
+    <script src="https://cdn.jsdelivr.net/npm/m3u8-parser@4.6.0/dist/m3u8-parser.min.js"></script>
+</head>
+<body>
+    <h2>M3U8 Master Playlist JSON Parser</h2>
+    <input type="text" id="m3u8Url" placeholder="Enter M3U8 URL">
+    <button onclick="fetchAndParseM3U8()">Fetch & Parse</button>
+    <h3>Parsed JSON Output:</h3>
+    <pre id="jsonOutput"></pre>
+
+    <script>
+        function getBaseUrl(url) {
+            try {
+                const urlObj = new URL(url);
+                return urlObj.origin + urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/') + 1);
+            } catch (error) {
+                console.error("Invalid URL:", error);
+                return "";
+            }
+        }
+
+        function getAbsoluteUrl(baseUrl, uri) {
+            if (!uri) return "N/A";
+            return uri.startsWith("http") ? uri : baseUrl + uri;
+        }
+
+        async function fetchAndParseM3U8() {
+            const url = document.getElementById('m3u8Url').value;
+            const baseUrl = getBaseUrl(url);
+            const jsonOutput = document.getElementById('jsonOutput');
+            jsonOutput.textContent = '';
+
+            if (!url) {
+                alert("Please enter a valid M3U8 URL.");
+                return;
+            }
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch M3U8 file. Status: ${response.status}`);
+                }
+
+                const content = await response.text();
+                const parser = new window.m3u8Parser.Parser();
+                parser.push(content);
+                parser.end();
+
+                // Construct JSON output
+                let parsedData = {
+                    success: true,
+                    parsedData: {
+                        allowCache: parser.manifest.allowCache || false,
+                        discontinuityStarts: parser.manifest.discontinuityStarts || [],
+                        segments: parser.manifest.segments || [],
+                        version: parser.manifest.version || null,
+                        playlists: [],
+                        mediaGroups: parser.manifest.mediaGroups || {}
+                    }
+                };
+
+                // Parse Video Playlists
+                if (parser.manifest.playlists) {
+                    parsedData.parsedData.playlists = parser.manifest.playlists.map(variant => ({
+                        attributes: variant.attributes,
+                        uri: getAbsoluteUrl(baseUrl, variant.uri),
+                        timeline: variant.timeline || 0
+                    }));
+                }
+
+                // Display JSON output
+                jsonOutput.textContent = JSON.stringify(parsedData, null, 4);
+                console.log(parsedData);
+
+            } catch (error) {
+                jsonOutput.textContent = JSON.stringify({ success: false, error: error.message }, null, 4);
+                console.error("Error:", error);
+            }
+        }
+    </script>
+</body>
+</html>
