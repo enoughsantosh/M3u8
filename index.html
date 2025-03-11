@@ -34,6 +34,19 @@
             return params.get(name);
         }
 
+        function fixMediaGroupUris(mediaGroups, baseUrl) {
+            for (const type in mediaGroups) {
+                for (const group in mediaGroups[type]) {
+                    for (const item in mediaGroups[type][group]) {
+                        if (mediaGroups[type][group][item].uri) {
+                            mediaGroups[type][group][item].uri = getAbsoluteUrl(baseUrl, mediaGroups[type][group][item].uri);
+                        }
+                    }
+                }
+            }
+            return mediaGroups;
+        }
+
         async function fetchAndParseM3U8() {
             const url = document.getElementById('m3u8Url').value;
             const baseUrl = getBaseUrl(url);
@@ -61,13 +74,14 @@
                     parsedData: {
                         allowCache: parser.manifest.allowCache || false,
                         discontinuityStarts: parser.manifest.discontinuityStarts || [],
-                        segments: parser.manifest.segments || [],
                         version: parser.manifest.version || null,
                         playlists: [],
-                        mediaGroups: parser.manifest.mediaGroups || {}
+                        mediaGroups: {},
+                        segments: []
                     }
                 };
 
+                // Fix Playlists URIs
                 if (parser.manifest.playlists) {
                     parsedData.parsedData.playlists = parser.manifest.playlists.map(variant => ({
                         attributes: variant.attributes,
@@ -76,6 +90,18 @@
                     }));
                 }
 
+                // Fix Segments URIs
+                if (parser.manifest.segments) {
+                    parsedData.parsedData.segments = parser.manifest.segments.map(segment => ({
+                        uri: getAbsoluteUrl(baseUrl, segment.uri),
+                        duration: segment.duration || 0
+                    }));
+                }
+
+                // Fix Media Group URIs
+                parsedData.parsedData.mediaGroups = fixMediaGroupUris(parser.manifest.mediaGroups, baseUrl);
+
+                // Display JSON output
                 jsonOutput.textContent = JSON.stringify(parsedData, null, 4);
                 console.log(parsedData);
 
